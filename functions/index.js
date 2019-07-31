@@ -12,11 +12,11 @@ app.post("/signup",signup);
 app.post("/login", login);
 
 //cards routes
-app.get("/cards", auth, getAllCards);
+//app.get("/cards", auth, getAllCards);
 app.post("/createCard", auth, createCard);
-app.post("/uploadImage", auth, uploadImage);
-app.post("/user",auth,addUserDetails);
-app.get("/user",auth,getAuthUser)
+//app.post("/uploadImage", auth, uploadImage);
+//app.post("/user",auth,addUserDetails);
+//app.get("/user",auth,getAuthUser)
 
 
 //1:47
