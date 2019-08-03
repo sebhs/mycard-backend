@@ -3,13 +3,13 @@ const firebase = require("firebase");
 const uuidv1 = require("uuid/v1");
 
 firebase.initializeApp(config);
-//TODO: to lower case everything
 
 const {
   validateSignUpData,
   validateLoginData,
   reduceUserDetails
 } = require("../util/validators");
+
 exports.signup = (req, res) => {
   const newUser = {
     email: req.body.email,
@@ -22,29 +22,6 @@ exports.signup = (req, res) => {
 
   if (!valid) return res.status(400).json(errors);
   let token, user_id;
-  /*
-    db.collection("cards")
-      .add(newCard)
-      .then(doc => {
-        res.json({ message: `document ${doc.id} created succesfully` });
-      })
-      .catch(err => {
-        res.status(500).json({ error: `something went wrong` });
-        console.log(err);
-      });
-      */
-  // db.collection("users")
-  //   .get()
-  //   .then(doc => {
-  //     if (doc.exists) {
-  //       return res.status(500).json({message:`something went wrong please try again`});
-  //     } else {
-  //     return firebase
-  //       .auth()
-  //       .createUserWithEmailAndPassword(newUser.email, newUser.password);
-  //     }
-  //   })
-
   firebase
     .auth()
     .createUserWithEmailAndPassword(newUser.email, newUser.password)

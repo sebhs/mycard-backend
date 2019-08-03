@@ -5,15 +5,24 @@ const express = require("express");
 const app = express();
 const auth = require("./util/auth")
 const {signup,login,uploadImage,addUserDetails, getAuthUser} = require('./handlers/users')
-const {getAllCards,createCard} = require('./handlers/cards');
+const {updateCard,createCard,getCards,getCardById} = require('./handlers/cards');
 
 //user routes
+//public
 app.post("/signup",signup);
 app.post("/login", login);
+//protected
+
 
 //cards routes
-//app.get("/cards", auth, getAllCards);
+//public
+app.get("/card",getCardById)
+//protected
 app.post("/createCard", auth, createCard);
+app.post("/updateCard", auth, updateCard);
+app.get("/getCards", auth, getCards);
+
+
 //app.post("/uploadImage", auth, uploadImage);
 //app.post("/user",auth,addUserDetails);
 //app.get("/user",auth,getAuthUser)
