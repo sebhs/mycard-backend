@@ -16,11 +16,11 @@ app.post("/login", login);
 
 //cards routes
 //public
-app.get("/card",getCardById)
+app.get("/card/:card_id",getCardById)
 //protected
 app.post("/createCard", auth, createCard);
 app.post("/updateCard", auth, updateCard);
-app.get("/getCards", auth, getCards);
+app.get("/cards", auth, getCards);
 
 
 //app.post("/uploadImage", auth, uploadImage);

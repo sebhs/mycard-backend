@@ -4,13 +4,9 @@ const uuidv1 = require("uuid/v1");
 //public routes
 
 exports.getCardById = (req, res) => {
-  if (!req.body.card_id || req.body.card_id.trim() === "") {
-    return res.status(400).json({ body: "card_id must not be empty" });
-  }
-
   return db
     .collection("cards")
-    .where("card_id", "==", req.body.card_id)
+    .where("card_id", "==", req.params.card_id)
     .get()
     .then(querySnapshot => {
       querySnapshot.forEach(function(doc) {
