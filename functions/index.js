@@ -16,7 +16,7 @@ app.post("/login", login);
 
 //cards routes
 //public
-app.get("/card/:card_id",getCardById)
+app.get("/card/:card_id/:format",getCardById)
 //protected
 app.post("/createCard", auth, createCard);
 app.post("/updateCard", auth, updateCard);

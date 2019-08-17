@@ -1,4 +1,8 @@
-const { db } = require("../util/admin");
+const { db, admin, config } = require("../util/admin");
+const { convertJSONtoVCard } = require("../util/vcard-converter");
+const path = require("path");
+const os = require("os");
+
 const uuidv1 = require("uuid/v1");
 
 //public routes
@@ -10,13 +14,22 @@ exports.getCardById = (req, res) => {
     .get()
     .then(querySnapshot => {
       querySnapshot.forEach(function(doc) {
-        return res.json(doc.data().body);
+        if(req.params.format === 'json'){
+          return res.send(doc.data().body);
+        } else if(req.params.format === 'vcard') {
+          return res.send(doc.data().vCardUrl);
+        } else {
+          return res.status(400).json({ error: `no such format` });
+        }
+        
       });
-      return res.json({});
+    })
+    .then(() => {
+      return res.status(400).json({ error: `ID not found` });
     })
     .catch(err => {
       console.log(err);
-      return res.status(500).json({ error: `something went wrong` });
+      return res.status(500).json({ error: `something went wrong ${err}` });
     });
 };
 
@@ -38,38 +51,46 @@ exports.createCard = (req, res) => {
     subscribers: [],
     public: true
   };
-  db.collection("cards")
-    .add(newCard)
-    .then(doc => {
-      console.log(
-        `document ${doc.id} created successfully, now adding to user ${
-          req.user.user_id
-        }...`
-      );
-      return db
-        .collection("users")
-        .where("user_id", "==", req.user.user_id)
-        .get();
-    })
-    .then(querySnapshot => {
-      querySnapshot.forEach(function(doc) {
-        let cards = doc.data().cards;
-        cards.push(newCard.card_id);
+
+  let vCard = convertJSONtoVCard(newCard.body);
+  uploadvCard(vCard, newCard.card_id).then(() => {
+    newCard.vCardUrl = `https://firebasestorage.googleapis.com/v0/b/${
+      config.storageBucket
+    }/o/${newCard.card_id}.vcf?alt=media`;
+    db.collection("cards")
+      .add(newCard)
+      .then(doc => {
+        console.log(
+          `document ${doc.id} created successfully, now adding to user ${
+            req.user.user_id
+          }...`
+        );
         return db
           .collection("users")
-          .doc(doc.id)
-          .update({ cards: cards });
-      });
-    })
-    .then(data => {
-      return res.json({ message: `Card created successfully` });
-    })
-    .catch(err => {
-      console.log(err);
-      return res.status(500).json({ error: `something went wrong` });
-    });
-};
+          .where("user_id", "==", req.user.user_id)
+          .get();
+      })
+      .then(querySnapshot => {
+        querySnapshot.forEach(function(doc) {
+          let cards = doc.data().cards;
+          cards.push(newCard.card_id);
+          return db
+            .collection("users")
+            .doc(doc.id)
+            .update({ cards: cards });
+        });
+      })
 
+      .then(() => {
+        return res.json({ card_id: newCard.card_id });
+      })
+      .catch(err => {
+        console.log(err);
+        return res.status(500).json({ error: `something went wrong` });
+      });
+  });
+};
+//TODO: update vCard
 exports.updateCard = (req, res) => {
   if (!req.body.card_id || req.body.card_id.trim() === "") {
     return res.status(400).json({ body: "card_id must not be empty" });
@@ -136,18 +157,19 @@ exports.getCards = (req, res) => {
     });
 };
 
-// db.doc(`/users/${newUser.handle}`)
-// .get()
-// .then((doc) => {
-//   if (doc.exists) {
-//     return res.status(400).json({ handle: 'this handle is already taken' });
-//   } else {
-//     return firebase
-//       .auth()
-//       .createUserWithEmailAndPassword(newUser.email, newUser.password);
-//   }ƒ
-// })
-// .then((data) => {
-//   userId = data.user.uid;
-//   return data.user.getIdToken();
-// })
+uploadvCard = (vCard, card_id) => {
+  const filepath = path.join(os.tmpdir(), `${card_id}.vcf`);
+  console.log(filepath);
+  vCard.saveToFile(filepath);
+  return admin
+    .storage()
+    .bucket()
+    .upload(filepath, {
+      resumable: false,
+      metadata: {
+        metadata: {
+          contentType: "text/vcard"
+        }
+      }
+    });
+};
