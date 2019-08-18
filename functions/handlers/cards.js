@@ -14,14 +14,13 @@ exports.getCardById = (req, res) => {
     .get()
     .then(querySnapshot => {
       querySnapshot.forEach(function(doc) {
-        if(req.params.format === 'json'){
+        if (req.params.format === "json") {
           return res.send(doc.data().body);
-        } else if(req.params.format === 'vcard') {
+        } else if (req.params.format === "vcard") {
           return res.send(doc.data().vCardUrl);
         } else {
           return res.status(400).json({ error: `no such format` });
         }
-        
       });
     })
     .then(() => {
@@ -95,12 +94,15 @@ exports.updateCard = (req, res) => {
   if (!req.body.card_id || req.body.card_id.trim() === "") {
     return res.status(400).json({ body: "card_id must not be empty" });
   }
-  req.body.card_id;
+  //req.body.card_id;
   const updatedCard = {
     card_type: req.body.card_type ? req.body.card_type.trim() : "",
     body: req.body.body ? req.body.body : "",
     updated_at: new Date().toISOString()
   };
+  if (updatedCard.card_type === "" && updatedCard.body === "") {
+    return res.status(400).json({ message: "body empty" });
+  }
   return db
     .collection("cards")
     .where("card_id", "==", req.body.card_id)
@@ -128,7 +130,13 @@ exports.updateCard = (req, res) => {
           });
       });
     })
-    .then(data => {
+    .then(() => {
+      if (updatedCard.body !== "") {
+        let vCard = convertJSONtoVCard(updatedCard.body);
+        return uploadvCard(vCard, req.body.card_id);
+      }
+    })
+    .then(() => {
       return res.json({ message: `Card updated successfully` });
     })
     .catch(err => {
@@ -148,7 +156,7 @@ exports.getCards = (req, res) => {
         userCards.push(doc.data());
       });
     })
-    .then(data => {
+    .then(() => {
       return res.json(userCards);
     })
     .catch(err => {
@@ -158,16 +166,21 @@ exports.getCards = (req, res) => {
 };
 
 uploadvCard = (vCard, card_id) => {
-  const filepath = path.join(os.tmpdir(), `${card_id}.vcf`);
+  const filename = `${card_id}.vcf`;
+  const filepath = path.join(os.tmpdir(), filename);
   console.log(filepath);
   vCard.saveToFile(filepath);
+  console.log(vCard.getFormattedString());
+  console.log("uploading vcard");
   return admin
     .storage()
     .bucket()
     .upload(filepath, {
       resumable: false,
       metadata: {
+        cacheControl: "no-cache",
         metadata: {
+          cacheControl: "no-cache",
           contentType: "text/vcard"
         }
       }
