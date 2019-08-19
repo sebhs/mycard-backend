@@ -56,11 +56,11 @@ exports.createCard = (req, res) => {
     newCard.vCardUrl = `https://firebasestorage.googleapis.com/v0/b/${
       config.storageBucket
     }/o/${newCard.card_id}.vcf?alt=media`;
-    db.collection("cards")
-      .add(newCard)
+    db.doc(`/cards/${newCard.card_id}`)
+      .set(newCard)
       .then(doc => {
         console.log(
-          `document ${doc.id} created successfully, now adding to user ${
+          `document ${newCard.card_id}} created successfully, now adding to user ${
             req.user.user_id
           }...`
         );
@@ -76,10 +76,9 @@ exports.createCard = (req, res) => {
           return db
             .collection("users")
             .doc(doc.id)
-            .update({ cards: cards });
+            .update({ cards: cards,current_card:newCard.card_id });
         });
       })
-
       .then(() => {
         return res.json({ card_id: newCard.card_id });
       })
@@ -168,10 +167,7 @@ exports.getCards = (req, res) => {
 uploadvCard = (vCard, card_id) => {
   const filename = `${card_id}.vcf`;
   const filepath = path.join(os.tmpdir(), filename);
-  console.log(filepath);
   vCard.saveToFile(filepath);
-  console.log(vCard.getFormattedString());
-  console.log("uploading vcard");
   return admin
     .storage()
     .bucket()

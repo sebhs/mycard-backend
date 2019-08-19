@@ -14,8 +14,7 @@ exports.signup = (req, res) => {
   const newUser = {
     email: req.body.email,
     password: req.body.password,
-    confirmPassword: req.body.confirmPassword,
-    name: req.body.name
+    confirmPassword: req.body.confirmPassword
   };
 
   const { valid, errors } = validateSignUpData(newUser);
@@ -31,13 +30,14 @@ exports.signup = (req, res) => {
     .then(idToken => {
       token = idToken;
       const userCredentials = {
-        name: newUser.name,
         email: newUser.email,
         created_at: new Date().toISOString(),
         user_id,
-        cards: []
+        current_card: "",
+        cards: [],
+        subs: []
       };
-      return db.collection("users").add(userCredentials);
+      return db.doc(`/users/${userCredentials.user_id}`).set(userCredentials);
     })
     .then(() => {
       return res.status(201).json({ token });
@@ -82,6 +82,100 @@ exports.login = (req, res) => {
         });
       }
       return res.status(500).json({ error: err.code });
+    });
+};
+
+exports.exchangeContacts = (req, res) => {
+  //POST {card_id, location}
+  const scanner_user_id = req.user.user_id;
+  const receiver_card_id = req.body.card_id;
+  const location = req.body.location;
+  let receiver_user_id;
+  let scanner_curr_card_id;
+  let scanner_subs;
+  let receiver_subs;
+  let exchange_id = uuidv1();
+  let scannerRef = db.doc(`/users/${scanner_user_id}`);
+
+  db.doc(`/cards/${receiver_card_id}`)
+    .get()
+    .then(doc => {
+      if (!doc.exists) {
+        console.log(`receiver_card_id ${receiver_card_id} not found`);
+        return res
+          .status(400)
+          .json({ message: `receiver_card_id ${receiver_card_id} not found` });
+      }
+      receiver_user_id = doc.data().owner;
+      if (receiver_user_id === scanner_user_id) {
+        const errMsg = `scanner and receiver cannot be the same`;
+        console.log(errMsg);
+        return res.status(400).json({ message: errMsg });
+      }
+    })
+    .then(() => {
+      return scannerRef.get();
+    })
+    .then(doc => {
+      if (!doc.exists) {
+        console.log(`scanner_user_id ${scanner_user_id} not found`);
+        return res
+          .status(400)
+          .json({ message: `scanner_user_id ${scanner_user_id} not found` });
+      }
+      scanner_subs = doc.data().subs;
+      scanner_curr_card_id = doc.data().current_card;
+
+      scanner_subs.indexOf(receiver_card_id) === -1
+        ? scanner_subs.push(receiver_card_id)
+        : console.log(
+            `scanner: ${scanner_user_id} already subscribed to receiver card: ${receiver_card_id}`
+          );
+      return scanner_subs;
+    })
+    .then(scanner_subs => {
+      return scannerRef.update({ subs: scanner_subs });
+    })
+    .then(() => {
+      return db.doc(`/users/${receiver_user_id}`).get()
+    })
+    .then(doc => {
+      if (!doc.exists) {
+        const errMsg = `receiver_user_id ${receiver_user_id} not found`
+        console.log(errMsg);
+        return res
+          .status(400)
+          .json({ message: errMsg });
+      }
+      receiver_subs = doc.data().subs;
+      receiver_subs.indexOf(scanner_curr_card_id) === -1
+        ? receiver_subs.push(scanner_curr_card_id)
+        : console.log(
+            `scanner: ${receiver_user_id} already subscribed to receiver card: ${scanner_curr_card_id}`
+          );
+      return receiver_subs;
+    }).then(receiver_subs => {
+      if(scanner_curr_card_id !== "") {
+        return db.doc(`/users/${receiver_user_id}`).update({subs:receiver_subs})
+      }  
+    }).then(() => {
+      let exchange = {
+        created_at: new Date().toISOString(),
+        exchange_id,
+        receiver_user_id,
+        scanner_card_id :scanner_curr_card_id,
+        scanner_user_id,
+        receiver_card_id,
+        location  
+      }
+      return db.doc(`/exchanges/${exchange.exchange_id}`).set(exchange);
+    })
+    .then(() => {
+      return res.json({ exchange_id: exchange_id });
+    })
+    .catch(err => {
+      console.log(err);
+      return res.status(500).json({ error: `something went wrong` });
     });
 };
 
