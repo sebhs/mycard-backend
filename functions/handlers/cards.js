@@ -8,23 +8,21 @@ const uuidv1 = require("uuid/v1");
 //public routes
 
 exports.getCardById = (req, res) => {
-  return db
-    .collection("cards")
-    .where("card_id", "==", req.params.card_id)
+  db.doc(`cards/${req.params.card_id}`)
     .get()
-    .then(querySnapshot => {
-      querySnapshot.forEach(function(doc) {
-        if (req.params.format === "json") {
-          return res.send(doc.data().body);
-        } else if (req.params.format === "vcard") {
-          return res.send(doc.data().vCardUrl);
-        } else {
-          return res.status(400).json({ error: `no such format` });
-        }
-      });
-    })
-    .then(() => {
-      return res.status(400).json({ error: `ID not found` });
+    .then(doc => {
+      if (!doc.exists) {
+        return res.status(400).json({ error: `card id not found` });
+      }
+      if (req.params.format !== "json" && req.params.format !== "vcard") {
+        return res.status(400).json({ error: `no such format` });
+      }
+      if (req.params.format === "json") {
+        return res.send(doc.data().body);
+      }
+      if (req.params.format === "vcard") {
+        return res.send(doc.data().vCardUrl);
+      }
     })
     .catch(err => {
       console.log(err);
@@ -52,48 +50,42 @@ exports.createCard = (req, res) => {
   };
 
   let vCard = convertJSONtoVCard(newCard.body);
-  uploadvCard(vCard, newCard.card_id).then(() => {
-    newCard.vCardUrl = `https://firebasestorage.googleapis.com/v0/b/${
-      config.storageBucket
-    }/o/${newCard.card_id}.vcf?alt=media`;
-    db.doc(`/cards/${newCard.card_id}`)
-      .set(newCard)
-      .then(doc => {
-        console.log(
-          `document ${newCard.card_id}} created successfully, now adding to user ${
-            req.user.user_id
-          }...`
-        );
-        return db
-          .collection("users")
-          .where("user_id", "==", req.user.user_id)
-          .get();
-      })
-      .then(querySnapshot => {
-        querySnapshot.forEach(function(doc) {
-          let cards = doc.data().cards;
-          cards.push(newCard.card_id);
-          return db
-            .collection("users")
-            .doc(doc.id)
-            .update({ cards: cards,current_card:newCard.card_id });
-        });
-      })
-      .then(() => {
-        return res.json({ card_id: newCard.card_id });
-      })
-      .catch(err => {
-        console.log(err);
-        return res.status(500).json({ error: `something went wrong` });
-      });
-  });
+
+  uploadvCard(vCard, newCard.card_id)
+    .then(() => {
+      newCard.vCardUrl = `https://firebasestorage.googleapis.com/v0/b/${
+        config.storageBucket
+      }/o/${newCard.card_id}.vcf?alt=media`;
+      return db.doc(`/cards/${newCard.card_id}`).set(newCard);
+    })
+    .then(() => {
+      console.log(
+        `document ${
+          newCard.card_id
+        }} created successfully, now adding to user ${req.user.user_id}...`
+      );
+      return db.doc(`users/${req.user.user_id}`).get();
+    })
+    .then(doc => {
+      let cards = doc.data().cards;
+      cards.push(newCard.card_id);
+      return db
+        .doc(`users/${req.user.user_id}`)
+        .update({ cards: cards, current_card: newCard.card_id });
+    })
+    .then(() => {
+      return res.json({ card_id: newCard.card_id });
+    })
+    .catch(err => {
+      console.log(err);
+      return res.status(500).json({ error: `something went wrong` });
+    });
 };
-//TODO: update vCard
+
 exports.updateCard = (req, res) => {
   if (!req.body.card_id || req.body.card_id.trim() === "") {
     return res.status(400).json({ body: "card_id must not be empty" });
   }
-  //req.body.card_id;
   const updatedCard = {
     card_type: req.body.card_type ? req.body.card_type.trim() : "",
     body: req.body.body ? req.body.body : "",
@@ -102,31 +94,24 @@ exports.updateCard = (req, res) => {
   if (updatedCard.card_type === "" && updatedCard.body === "") {
     return res.status(400).json({ message: "body empty" });
   }
-  return db
-    .collection("cards")
-    .where("card_id", "==", req.body.card_id)
+  db.doc(`cards/${req.body.card_id}`)
     .get()
-    .then(querySnapshot => {
-      querySnapshot.forEach(function(doc) {
-        if (doc.data().owner !== req.user.user_id) {
-          return res
-            .status(400)
-            .json({ body: "unauthorized to update this card" });
-        }
-        const newCardType =
-          updatedCard.card_type === ""
-            ? doc.data().card_type
-            : updatedCard.card_type;
-        const newBody =
-          updatedCard.body === "" ? doc.data().body : updatedCard.body;
-        return db
-          .collection("cards")
-          .doc(doc.id)
-          .update({
-            body: newBody,
-            card_type: newCardType,
-            updated_at: updatedCard.updated_at
-          });
+    .then(doc => {
+      if (doc.data().owner !== req.user.user_id) {
+        return res
+          .status(400)
+          .json({ body: "unauthorized to update this card" });
+      }
+      const newCardType =
+        updatedCard.card_type === ""
+          ? doc.data().card_type
+          : updatedCard.card_type;
+      const newBody =
+        updatedCard.body === "" ? doc.data().body : updatedCard.body;
+      return db.doc(`cards/${req.body.card_id}`).update({
+        body: newBody,
+        card_type: newCardType,
+        updated_at: updatedCard.updated_at
       });
     })
     .then(() => {
