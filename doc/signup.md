@@ -24,7 +24,7 @@ Used to collect create a new User.
 ```json
 {
     "email":"seb@email.com",
-	"password":"abcd1234",
+    "password":"abcd1234",
 	"confirmPassword":"abcd1234"
 }
 ```

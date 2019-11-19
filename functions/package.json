@@ -16,7 +16,8 @@
     "firebase": "^6.3.1",
     "firebase-admin": "^8.0.0",
     "firebase-functions": "^3.0.2",
-    "mycardvcf": "^1.2.0"
+    "mycardvcf": "^1.2.0",
+    "vcards-js": "^2.10.0"
   },
   "devDependencies": {
     "firebase-functions-test": "^0.1.6"

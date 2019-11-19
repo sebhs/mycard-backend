@@ -16,28 +16,26 @@ exports.signup = (req, res) => {
     password: req.body.password,
     confirmPassword: req.body.confirmPassword
   };
-
   const { valid, errors } = validateSignUpData(newUser);
   if (!valid) return res.status(400).json(errors);
-  let token, user_id;
+
+  let token, userID;
   firebase
     .auth()
     .createUserWithEmailAndPassword(newUser.email, newUser.password)
     .then(data => {
-      user_id = data.user.uid;
+      userID = data.user.uid;
       return data.user.getIdToken();
     })
     .then(idToken => {
       token = idToken;
       const userCredentials = {
         email: newUser.email,
-        created_at: new Date().toISOString(),
-        user_id,
-        current_card: "",
-        cards: [],
-        subs: []
+        createdAt: new Date().toISOString(),
+        userID,
+        currentCard: "",
       };
-      return db.doc(`/users/${userCredentials.user_id}`).set(userCredentials);
+      return db.doc(`/users/${userCredentials.userID}`).set(userCredentials);
     })
     .then(() => {
       return res.status(201).json({ token });
@@ -81,21 +79,21 @@ exports.login = (req, res) => {
           general: "Email and password did not match. Please try again."
         });
       }
-      return res.status(500).json({ error: err.code });
+      return res.status(500).json(err);
     });
 };
 
 exports.exchangeContacts = (req, res) => {
   //POST {card_id, location}
-  const scanner_user_id = req.user.user_id;
+  const scanner_userID = req.user.userID;
   const receiver_card_id = req.body.card_id;
   const location = req.body.location;
-  let receiver_user_id;
+  let receiver_userID;
   let scanner_curr_card_id;
   let scanner_subs;
   let receiver_subs;
   let exchange_id = uuidv1();
-  let scannerRef = db.doc(`/users/${scanner_user_id}`);
+  let scannerRef = db.doc(`/users/${scanner_userID}`);
 
   db.doc(`/cards/${receiver_card_id}`)
     .get()
@@ -106,8 +104,8 @@ exports.exchangeContacts = (req, res) => {
           .status(400)
           .json({ message: `receiver_card_id ${receiver_card_id} not found` });
       }
-      receiver_user_id = doc.data().owner;
-      if (receiver_user_id === scanner_user_id) {
+      receiver_userID = doc.data().owner;
+      if (receiver_userID === scanner_userID) {
         const errMsg = `scanner and receiver cannot be the same`;
         console.log(errMsg);
         return res.status(400).json({ message: errMsg });
@@ -118,18 +116,18 @@ exports.exchangeContacts = (req, res) => {
     })
     .then(doc => {
       if (!doc.exists) {
-        console.log(`scanner_user_id ${scanner_user_id} not found`);
+        console.log(`scanner_userID ${scanner_userID} not found`);
         return res
           .status(400)
-          .json({ message: `scanner_user_id ${scanner_user_id} not found` });
+          .json({ message: `scanner_userID ${scanner_userID} not found` });
       }
       scanner_subs = doc.data().subs;
-      scanner_curr_card_id = doc.data().current_card;
+      scanner_curr_card_id = doc.data().currentCard;
 
       scanner_subs.indexOf(receiver_card_id) === -1
         ? scanner_subs.push(receiver_card_id)
         : console.log(
-            `scanner: ${scanner_user_id} already subscribed to receiver card: ${receiver_card_id}`
+            `scanner: ${scanner_userID} already subscribed to receiver card: ${receiver_card_id}`
           );
       return scanner_subs;
     })
@@ -137,11 +135,11 @@ exports.exchangeContacts = (req, res) => {
       return scannerRef.update({ subs: scanner_subs });
     })
     .then(() => {
-      return db.doc(`/users/${receiver_user_id}`).get()
+      return db.doc(`/users/${receiver_userID}`).get()
     })
     .then(doc => {
       if (!doc.exists) {
-        const errMsg = `receiver_user_id ${receiver_user_id} not found`
+        const errMsg = `receiver_userID ${receiver_userID} not found`
         console.log(errMsg);
         return res
           .status(400)
@@ -151,20 +149,20 @@ exports.exchangeContacts = (req, res) => {
       receiver_subs.indexOf(scanner_curr_card_id) === -1
         ? receiver_subs.push(scanner_curr_card_id)
         : console.log(
-            `scanner: ${receiver_user_id} already subscribed to receiver card: ${scanner_curr_card_id}`
+            `scanner: ${receiver_userID} already subscribed to receiver card: ${scanner_curr_card_id}`
           );
       return receiver_subs;
     }).then(receiver_subs => {
       if(scanner_curr_card_id !== "") {
-        return db.doc(`/users/${receiver_user_id}`).update({subs:receiver_subs})
+        return db.doc(`/users/${receiver_userID}`).update({subs:receiver_subs})
       }  
     }).then(() => {
       let exchange = {
         created_at: new Date().toISOString(),
         exchange_id,
-        receiver_user_id,
+        receiver_userID,
         scanner_card_id :scanner_curr_card_id,
-        scanner_user_id,
+        scanner_userID,
         receiver_card_id,
         location  
       }
@@ -176,12 +174,12 @@ exports.exchangeContacts = (req, res) => {
     .catch(err => {
       console.log(err);
       return res.status(500).json({ error: `something went wrong` });
-    });
+    });c
 };
 
 exports.addUserDetails = (req, res) => {
   let userDetails = reduceUserDetails(req.body);
-  db.doc(`/users/${req.user.user_id}`)
+  db.doc(`/users/${req.user.userID}`)
     .update(userDetails)
     .then(() => {
       return res.json({ message: "Details added successfully" });
@@ -194,7 +192,7 @@ exports.addUserDetails = (req, res) => {
 
 exports.getAuthUser = (req, res) => {
   let userData = {};
-  db.doc(`users/${req.user.user_id}`)
+  db.doc(`users/${req.user.userID}`)
     .get()
     .then(doc => {
       if (doc.exists) {
@@ -256,7 +254,7 @@ exports.uploadImage = (req, res) => {
         const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${
           config.storageBucket
         }/o/${imageFileName}?alt=media`;
-        return db.doc(`/users/${req.user.user_id}`).update({ imageUrl });
+        return db.doc(`/users/${req.user.userID}`).update({ imageUrl });
       })
       .then(() => {
         return res.json({ message: "image uploaded successfully" });
