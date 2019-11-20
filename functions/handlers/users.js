@@ -33,7 +33,7 @@ exports.signup = (req, res) => {
         email: newUser.email,
         createdAt: new Date().toISOString(),
         userID,
-        currentCard: "",
+        currentCard: ""
       };
       return db.doc(`/users/${userCredentials.userID}`).set(userCredentials);
     })
@@ -80,6 +80,45 @@ exports.login = (req, res) => {
         });
       }
       return res.status(500).json(err);
+    });
+};
+
+exports.sendContactTo = (req, res) => {
+  const receiverRef = db.doc(`/users/${req.params.receiverID}`);
+  const senderRef = db.doc(`/users/${req.user.user_id}`);
+  senderRef
+    .get()
+    .then(doc => {
+      if (!doc.exists) {
+        return res.status(400).json({ error: `user not found` });
+      }
+      return doc.data().currentCard;
+    })
+    .then(currentCard => {
+      if (currentCard === "")
+        return res.status(400).json({ error: `user doesn't have any cards` });
+      return db.doc(`/cards/${currentCard}`).get();
+    })
+    .then(doc => {
+      const contact = {
+        contactBody: doc.data().contactBody,
+        vCardUrl: doc.data().vCardUrl,
+        ownerID: doc.data().ownerID,
+        internalContactID: "",
+        cardID: doc.data().cardID,
+        addedAt: new Date().toISOString()
+      };
+      return receiverRef
+        .collection("contacts")
+        .doc(req.params.receiverID)
+        .set(contact);
+    })
+    .then(() => {
+      return res.json({ msg: "success" });
+    })
+    .catch(err => {
+      console.log(err);
+      return res.status(500).json({ error: `something went wrong` });
     });
 };
 
@@ -135,15 +174,13 @@ exports.exchangeContacts = (req, res) => {
       return scannerRef.update({ subs: scanner_subs });
     })
     .then(() => {
-      return db.doc(`/users/${receiver_userID}`).get()
+      return db.doc(`/users/${receiver_userID}`).get();
     })
     .then(doc => {
       if (!doc.exists) {
-        const errMsg = `receiver_userID ${receiver_userID} not found`
+        const errMsg = `receiver_userID ${receiver_userID} not found`;
         console.log(errMsg);
-        return res
-          .status(400)
-          .json({ message: errMsg });
+        return res.status(400).json({ message: errMsg });
       }
       receiver_subs = doc.data().subs;
       receiver_subs.indexOf(scanner_curr_card_id) === -1
@@ -152,20 +189,24 @@ exports.exchangeContacts = (req, res) => {
             `scanner: ${receiver_userID} already subscribed to receiver card: ${scanner_curr_card_id}`
           );
       return receiver_subs;
-    }).then(receiver_subs => {
-      if(scanner_curr_card_id !== "") {
-        return db.doc(`/users/${receiver_userID}`).update({subs:receiver_subs})
-      }  
-    }).then(() => {
+    })
+    .then(receiver_subs => {
+      if (scanner_curr_card_id !== "") {
+        return db
+          .doc(`/users/${receiver_userID}`)
+          .update({ subs: receiver_subs });
+      }
+    })
+    .then(() => {
       let exchange = {
         created_at: new Date().toISOString(),
         exchange_id,
         receiver_userID,
-        scanner_card_id :scanner_curr_card_id,
+        scanner_card_id: scanner_curr_card_id,
         scanner_userID,
         receiver_card_id,
-        location  
-      }
+        location
+      };
       return db.doc(`/exchanges/${exchange.exchange_id}`).set(exchange);
     })
     .then(() => {
@@ -174,7 +215,8 @@ exports.exchangeContacts = (req, res) => {
     .catch(err => {
       console.log(err);
       return res.status(500).json({ error: `something went wrong` });
-    });c
+    });
+  c;
 };
 
 exports.addUserDetails = (req, res) => {
@@ -251,9 +293,7 @@ exports.uploadImage = (req, res) => {
         }
       })
       .then(() => {
-        const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${
-          config.storageBucket
-        }/o/${imageFileName}?alt=media`;
+        const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${config.storageBucket}/o/${imageFileName}?alt=media`;
         return db.doc(`/users/${req.user.userID}`).update({ imageUrl });
       })
       .then(() => {

@@ -4,38 +4,34 @@ const functions = require("firebase-functions");
 const express = require("express");
 const app = express();
 const auth = require("./util/auth")
-const {signup,login,exchangeContacts,uploadImage,addUserDetails, getAuthUser} = require('./handlers/users')
-const {updateCard,createCard,getCards,getCardById} = require('./handlers/cards');
+const {signup,login,exchangeContacts,sendContactTo} = require('./handlers/users')
+const {createOrUpdateCard,getCardById,addCardById} = require('./handlers/cards');
 
 //user routes
 //public
 app.post("/signup",signup);
 app.post("/login", login);
+
 //protected
 app.post("/exchange",auth,exchangeContacts);
-
+app.get("/sendContact/:receiverID/",auth, sendContactTo);
 
 
 //cards routes
 //public
-app.get("/card/:card_id/:format",getCardById)
+
 //protected
-app.post("/createCard", auth, createCard);
-app.post("/updateCard", auth, updateCard);
-app.get("/cards", auth, getCards);
+app.get("/card/:cardID/",auth,getCardById)
+app.get("/addCard/:cardID/",auth,addCardById)
+app.post("/createCard", auth, createOrUpdateCard);
+app.post("/updateCard", auth, createOrUpdateCard);
 
 
 
 
 
-//app.post("/uploadImage", auth, uploadImage);
-//app.post("/user",auth,addUserDetails);
-//app.get("/user",auth,getAuthUser)
 
 
-//1:47
-
-//exports.api = functions.region('europe-west1').https.onRequest(app);
 exports.api = functions.https.onRequest(app);
 
 //for reference, default storage settings

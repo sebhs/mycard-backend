@@ -23,7 +23,7 @@ module.exports = (req, res, next) => {
           .get();
       })
       .then(data => {
-        req.user.handle = data.docs[0].data().handle;
+        req.user.user_id = req.user.uid;
         return next();
       })
       .catch(err => {
