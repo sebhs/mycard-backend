@@ -25,6 +25,11 @@ exports.getCardById = (req, res) => {
       return res.status(500).json({ error: `something went wrong ${err}` });
     });
 };
+
+
+
+
+
 exports.addCardById = (req, res) => {
   const cardRef = db.doc(`/cards/${req.params.cardID}`);
   const userRef = db.doc(`/users/${req.user.user_id}`);
@@ -38,12 +43,13 @@ exports.addCardById = (req, res) => {
         contactBody: doc.data().contactBody,
         vCardUrl: doc.data().vCardUrl,
         ownerID: doc.data().ownerID,
-        cardID: doc.data().cardID
+        cardID: doc.data().cardID,
+        internalContactID:""
       };
       return userRef
       .collection("contacts")
-      .doc(req.user.user_id)
-      .set(contact);
+      .doc(req.params.cardID)
+      .set(contact); //TODO: is set in this situation fine?
     }).then(() =>{
       return res.json({ msg: "success" });
     })
@@ -54,6 +60,7 @@ exports.addCardById = (req, res) => {
 };
 
 exports.createOrUpdateCard = (req, res) => {
+  console.log(req.body)
   if (
     !req.body.toUpdate ||
     !req.body.contactBody ||
@@ -75,7 +82,7 @@ exports.createOrUpdateCard = (req, res) => {
   };
 
   const cardInfoForOwner = {
-    cardID: toUpdate ? req.body.cardID : uuidv1(),
+    cardID: contactCard.cardID,
     internalContactID: req.body.internalContactID,
     ownerID: req.user.user_id,
     vCardUrl: "",
@@ -91,7 +98,7 @@ exports.createOrUpdateCard = (req, res) => {
     .set(cardInfoForOwner)
     .then(() => {
       console.log(
-        `card ${cardInfoForOwner.cardID} was added to ${cardInfoForOwner.cardID}`
+        `card ${cardInfoForOwner.cardID} was added to ${cardInfoForOwner.ownerID}`
       );
       return ownerRef.update({ currentCard: cardInfoForOwner.cardID });
     })

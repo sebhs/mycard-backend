@@ -1,9 +1,9 @@
 const admin = require("firebase-admin");
-const serviceAccount = require("/Users/sebhs/Downloads/mycard-93892-firebase-adminsdk-ebhfv-3b909e7499.json"); //comment in for firebase serve
+// const serviceAccount = require("/Users/sebhs/Downloads/mycard-93892-firebase-adminsdk-ebhfv-3b909e7499.json"); //comment in for firebase serve
 
 const config = {
-  // credential: admin.credential.applicationDefault(), //for firebase deploy
-  credential: admin.credential.cert(serviceAccount), //comment in local firebase serve
+  credential: admin.credential.applicationDefault(), //for firebase deploy
+  // credential: admin.credential.cert(serviceAccount), //comment in local firebase serve
   apiKey: "AIzaSyBezkELNu-TfdbkE0px0bMDLsMKLZiwNAY",
   authDomain: "mycard-93892.firebaseapp.com",
   databaseURL: "https://mycard-93892.firebaseio.com",

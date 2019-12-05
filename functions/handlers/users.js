@@ -50,6 +50,9 @@ exports.signup = (req, res) => {
     });
 };
 
+exports.signupPhone = (req, res) => {
+  
+}
 //TODO: Change login with SMS instead of email password
 exports.login = (req, res) => {
   const user = {
@@ -82,6 +85,39 @@ exports.login = (req, res) => {
       return res.status(500).json(err);
     });
 };
+
+
+exports.getCurrentCard = (req, res) => {
+  const user = db.doc(`/users/${req.user.user_id}`);
+  user.get()
+    .then(doc => {
+      if (doc.exists) {
+        return doc.data().currentCard
+      }
+    })
+    .then(cardID => {
+      return db.doc(`cards/${cardID}`).get()
+    })
+    .then(doc => {
+      console.log(doc.data())
+      if (!doc.exists) {
+        return res.status(400).json({ error: `contact not found` });
+      }
+      const responseContact = {
+        contactBody: doc.data().contactBody,
+        vCardUrl: doc.data().vCardUrl,
+        ownerID: doc.data().ownerID,
+        cardID: doc.data().cardID
+      };
+      return res.send(responseContact);
+    })
+    .catch(err => {
+      console.log(err);
+      return res.status(500).json({ error: `something went wrong ${err}` });
+    });
+};
+
+
 
 exports.sendContactTo = (req, res) => {
   const receiverRef = db.doc(`/users/${req.params.receiverID}`);

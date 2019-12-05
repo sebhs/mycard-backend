@@ -4,7 +4,7 @@ const functions = require("firebase-functions");
 const express = require("express");
 const app = express();
 const auth = require("./util/auth")
-const {signup,login,exchangeContacts,sendContactTo} = require('./handlers/users')
+const {signup,login,exchangeContacts,sendContactTo,getCurrentCard} = require('./handlers/users')
 const {createOrUpdateCard,getCardById,addCardById} = require('./handlers/cards');
 
 //user routes
@@ -13,7 +13,7 @@ app.post("/signup",signup);
 app.post("/login", login);
 
 //protected
-app.post("/exchange",auth,exchangeContacts);
+// app.post("/exchange",auth,exchangeContacts);
 app.get("/sendContact/:receiverID/",auth, sendContactTo);
 
 
@@ -21,16 +21,10 @@ app.get("/sendContact/:receiverID/",auth, sendContactTo);
 //public
 
 //protected
-app.get("/card/:cardID/",auth,getCardById)
+app.get("/currentCard/",auth,getCurrentCard)
 app.get("/addCard/:cardID/",auth,addCardById)
 app.post("/createCard", auth, createOrUpdateCard);
 app.post("/updateCard", auth, createOrUpdateCard);
-
-
-
-
-
-
 
 exports.api = functions.https.onRequest(app);
 
